@@ -1,5 +1,9 @@
 #!/bin/bash
-rm -rf ${KERNEL_OUT}
+clear
+echo Cloning AnyKernel
+git clone https://github.com/yograjfire18/AnyKernel3 --depth=1 anykernel
+
+DT=$(date +"%Y%m%d-%H%M")
 config=kona-perf_defconfig
 
 MAKE_PATH=$(pwd)/tc/build-tools/bin/
@@ -13,12 +17,25 @@ ARCH=${KERNEL_ARCH}
 TARGET_INCLUDES=${TARGET_KERNEL_MAKE_CFLAGS}
 TARGET_LINCLUDES=${TARGET_KERNEL_MAKE_LDFLAGS}
 
-TARGET_KERNEL_MAKE_ENV+="CC=$(pwd)/tc/clang-17/bin/clang"
+TARGET_KERNEL_MAKE_ENV+="CC=$(pwd)/tc/clang/bin/clang"
 
-${MAKE_PATH}make O=${OUT_DIR} ${TARGET_KERNEL_MAKE_ENV} LLVM_IAS=1 HOSTLDFLAGS="${TARGET_LINCLUDES}" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip -j10 LLVM_IAS=1 vendor/$config
+compile() {
+echo compiling kernel
 
-# cd ${KERNEL_DIR} && \
-# ${MAKE_PATH}make O=${OUT_DIR} ${TARGET_KERNEL_MAKE_ENV} HOSTLDFLAGS="${TARGET_LINCLUDES}" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} menuconfig
+make O=${OUT_DIR} ${TARGET_KERNEL_MAKE_ENV} LLVM_IAS=1 HOSTLDFLAGS="${TARGET_LINCLUDES}" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip -j10 LLVM_IAS=1 vendor/$config
 
-cd ${OUT_DIR} && \
-${MAKE_PATH}make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} LLVM_IAS=1 HOSTCFLAGS="${TARGET_INCLUDES}" HOSTLDFLAGS="${TARGET_LINCLUDES}" O=${OUT_DIR} ${TARGET_KERNEL_MAKE_ENV} NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip LLVM_IAS=1 -j10 | tee build.log
+make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} LLVM_IAS=1 HOSTCFLAGS="${TARGET_INCLUDES}" HOSTLDFLAGS="${TARGET_LINCLUDES}" O=${OUT_DIR} ${TARGET_KERNEL_MAKE_ENV} NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip LLVM_IAS=1 -j$(nproc --all) |& tee build.log
+}
+
+zipping() {
+echo zipping kernel
+
+cd anykernel || exit 1
+    rm *zip
+    cp ../out/arch/arm64/boot/Image .
+    zip -r9 perf-${DT}.zip *
+    cd ..
+}
+
+compile
+zipping
