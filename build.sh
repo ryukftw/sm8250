@@ -33,6 +33,8 @@ echo zipping kernel
 cd anykernel || exit 1
     rm *zip
     cp ../out/arch/arm64/boot/Image .
+    cp ../out/arch/arm64/boot/dtbo.img .
+    cp ../out/arch/arm64/boot/dtb .
     zip -r9 perf-${DT}.zip *
     cd ..
 }
