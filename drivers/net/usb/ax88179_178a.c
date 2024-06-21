@@ -921,19 +921,18 @@ static int ax88179_link_reset(struct ax_device *axdev)
 			if (!(reg32 & 0x40000000))
 				break;
 
-			reg32 = 0x80000000;
-			ax_write_cmd(axdev, 0x81, 0x8c, 0, 4, &reg32);
+			ax88179_rx_checksum(skb, pkt_hdr);
+			return 1;
 		}
 
-		temp16 = AX_RX_CTL_DROPCRCERR | AX_RX_CTL_START |
-			 AX_RX_CTL_AP | AX_RX_CTL_AMALL | AX_RX_CTL_AB;
-		ax_write_cmd_nopm(axdev, AX_ACCESS_MAC, AX_RX_CTL,
-				  2, 2, &temp16);
-	}
+		ax_skb = netdev_alloc_skb_ip_align(dev->net, pkt_len);
+		if (!ax_skb)
+			return 0;
+		skb_put(ax_skb, pkt_len);
+		memcpy(ax_skb->data, skb->data + 2, pkt_len);
 
-	axdev->rxctl |= AX_RX_CTL_DROPCRCERR | AX_RX_CTL_START | AX_RX_CTL_AB;
-	ax_write_cmd_nopm(axdev, AX_ACCESS_MAC, AX_RX_CTL,
-			  2, 2, &axdev->rxctl);
+		ax88179_rx_checksum(ax_skb, pkt_hdr);
+		usbnet_skb_return(dev, ax_skb);
 
 	mode |= AX_MEDIUM_RECEIVE_EN;
 	ax_write_cmd_nopm(axdev, AX_ACCESS_MAC, AX_MEDIUM_STATUS_MODE,
